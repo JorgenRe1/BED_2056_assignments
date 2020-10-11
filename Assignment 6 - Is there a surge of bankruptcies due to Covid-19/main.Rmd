@@ -6,12 +6,12 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 Because of the Covid pandemic there has been a difficult time for some groups of companies as they have lost business. How does it compare to 2019?
 
-```{r fetchData}
+```{r fetchData, echo=FALSE}
 url <- "https://w2.brreg.no/kunngjoring/kombisok.jsp?id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0"
 
 library('xml2')
@@ -82,11 +82,9 @@ covidYear <- preAggregatedData %>% filter(year == "2020")
 
 ```
 
-## Including Plots
+## 2019 vs 2020 Bankruptcies Per County
 
-You can also embed plots, for example:
-
-```{r plots, fig.show="hold", echo=FALSE}
+```{r plots, echo=FALSE}
 require(data.table)
 require(ggplot2)
 require(tidyverse)
@@ -131,8 +129,8 @@ for(i in 1:length(counties)){
   ylab("Number of bankruptcies") + xlab("Month") 
   print(plot)
 }
-
-
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Based on the results no clear conclusion can be taken as there are no significant change. However looking at these numbers alone is not enough to give a final conclusion. This is because some company types are more affected than others such as the musical industry. 
+
+It would thus be neccecary to include other data to be able to take a better conclusion.
