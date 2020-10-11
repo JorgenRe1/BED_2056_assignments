@@ -1,0 +1,130 @@
+---
+title: "Is there a surge of bankruptcies due to Covid-19?"
+author: "Jorgen Reinnes"
+date: "10/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Because of the Covid pandemic there has been a difficult time for some groups of companies as they have lost business. How does it compare to 2019?
+
+```{r fetchData}
+url <- "https://w2.brreg.no/kunngjoring/kombisok.jsp?id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0"
+
+library('xml2')
+library('rvest')
+
+scrape_search <- function(url, from_date, to_date) {
+  data = data.frame()
+  
+  # Get website html
+  webpage <- read_html(paste(url, "&datoFra=", from_date, "&datoTil=", to_date, sep = ""))
+  
+  # Get the data of search
+  rows <- webpage %>% html_nodes("table:nth-of-type(4) table tr")
+  
+  # Loop through rows and clean data length(rows)
+  county = "TBD"
+  # Skip first 5 rows as they contain no data
+  for (i in 6:length(rows)){
+    tds <- rows[i] %>% html_nodes("td")
+    if (length(tds) == 2){
+      # County name Remove spaces and new lines
+      county <- gsub("^\\s+|\\s+$", "", rows[i] %>% html_text())
+    } else if (length(tds) > 3) {
+      # Brokerage
+      orgNumber <- trimws(gsub("\n", "", tds[4] %>% html_text()))
+      # Only record companies which will have 4th td string length of atleast 9 chars:
+      if (nchar(orgNumber) == 11){
+      data <- rbind(data, data.frame(county=county, company=trimws(gsub("\n", "", tds[2] %>% html_text())), orgNumber=orgNumber, date=tds[6] %>% html_text(), type=trimws(gsub("\n", "", tds[8] %>% html_text()))))
+      }
+    } else {
+      # Ignore white space rows
+    }
+  }
+  return(data)
+}
+
+result <- data.frame()
+# For each month search given the 5000 results limit until today
+library(lubridate)
+from_date <- ymd("2019-01-01")
+now_date <- today()
+while (from_date <= now_date){
+  to_date <- from_date %m+% months(1) %m+% days(-1)
+  result <- rbind(result, scrape_search(url, from_date %>% format("%d.%m.%Y"), to_date %>% format("%d.%m.%Y")))
+  from_date <- from_date %m+% months(1)
+}
+
+# Cleanup data
+library("dplyr")
+
+# Fix date type
+result <- result %>% mutate(date = as.Date(date, format="%d.%m.%Y")) %>%
+  # Filter out data from outside the country
+  filter(county!="Utenlands") %>% filter(type=="Konkursåpning")
+
+# Add year, and format date day to 01 for all
+preAggregatedData <- result %>% mutate(year=format(date, "%Y")) %>% mutate(month=format(date, "%m"))
+
+preCovidYear <- preAggregatedData %>% filter(year == "2019")
+covidYear <- preAggregatedData %>% filter(year == "2020")
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+require(data.table)
+require(ggplot2)
+require(tidyverse)
+
+fill_empty_months <- function(df, months) {
+  # df has all 12 months good!
+  if (nrow(df) == months){
+    return(df)
+  }
+  # No data certain months. Fix it
+  filled <- data.frame()
+  for (m in 1:months){
+    monthChar = as.character(m)
+    if (m < 10){
+      monthChar <- paste("0", monthChar, sep="")
+    }
+    newDf <- data.frame(month=monthChar, count=0)
+    filled <- rbind(filled, newDf)
+  }
+  for (i in 1:nrow(df)){
+    month = as.numeric(df$month[i])
+    filled$count[month] <- df$count[i]
+  }
+  return(filled)
+}
+
+# Make a plot for each county
+counties <- unique(result$county)
+for(i in 1:length(counties)){
+  countyN <- counties[i]
+  countyPre <- preCovidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
+  countyCovidYear <- covidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
+  
+  countyPre <- fill_empty_months(countyPre, 12)
+  countyCovidYear <- fill_empty_months(countyCovidYear, 10)
+
+  ggplot() +
+  geom_line(data=countyPre, aes(x=month, y=count, group=2019, col="2019")) +
+  geom_line(data=countyCovidYear, aes(x=month, y=count, group=2020, col="2020")) +
+  ggtitle(countyN) +
+  ylab("Number of bankruptcies") + xlab("Month") 
+}
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
