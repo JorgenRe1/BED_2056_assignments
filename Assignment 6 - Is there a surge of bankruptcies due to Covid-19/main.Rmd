@@ -18,7 +18,8 @@ library('xml2')
 library('rvest')
 
 scrape_search <- function(url, from_date, to_date) {
-  data = data.frame()
+  data <- data.frame(county=rep(NA, 5000), company=rep(NA, 5000), orgNumber=rep(NA, 5000), date=rep(NA, 5000), type=rep(NA, 5000))
+  found <- 0
   
   # Get website html
   webpage <- read_html(paste(url, "&datoFra=", from_date, "&datoTil=", to_date, sep = ""))
@@ -39,13 +40,18 @@ scrape_search <- function(url, from_date, to_date) {
       orgNumber <- trimws(gsub("\n", "", tds[4] %>% html_text()))
       # Only record companies which will have 4th td string length of atleast 9 chars:
       if (nchar(orgNumber) == 11){
-      data <- rbind(data, data.frame(county=county, company=trimws(gsub("\n", "", tds[2] %>% html_text())), orgNumber=orgNumber, date=tds[6] %>% html_text(), type=trimws(gsub("\n", "", tds[8] %>% html_text()))))
+        found <- found + 1
+        data$county[found] <- county
+        data$company[found] <- trimws(gsub("\n", "", tds[2] %>% html_text()))
+        data$orgNumber[found] <- orgNumber
+        data$date[found] <- tds[6] %>% html_text()
+        data$type[found] <- trimws(gsub("\n", "", tds[8] %>% html_text()))
       }
     } else {
       # Ignore white space rows
     }
   }
-  return(data)
+  return(data[1:found,])
 }
 
 result <- data.frame()
@@ -80,7 +86,7 @@ covidYear <- preAggregatedData %>% filter(year == "2020")
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
+```{r plots, fig.show="hold", echo=FALSE}
 require(data.table)
 require(ggplot2)
 require(tidyverse)
@@ -109,19 +115,21 @@ fill_empty_months <- function(df, months) {
 
 # Make a plot for each county
 counties <- unique(result$county)
+thisMonth = as.numeric(format(now_date, "%m"))
 for(i in 1:length(counties)){
   countyN <- counties[i]
   countyPre <- preCovidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
   countyCovidYear <- covidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
   
   countyPre <- fill_empty_months(countyPre, 12)
-  countyCovidYear <- fill_empty_months(countyCovidYear, 10)
+  countyCovidYear <- fill_empty_months(countyCovidYear, thisMonth)
 
-  ggplot() +
+  plot <- ggplot() +
   geom_line(data=countyPre, aes(x=month, y=count, group=2019, col="2019")) +
   geom_line(data=countyCovidYear, aes(x=month, y=count, group=2020, col="2020")) +
   ggtitle(countyN) +
   ylab("Number of bankruptcies") + xlab("Month") 
+  print(plot)
 }
 
 
