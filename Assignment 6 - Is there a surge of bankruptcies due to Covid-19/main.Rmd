@@ -6,6 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library('xml2')
+library('rvest')
+library('lubridate')
+library("dplyr")
+library("data.table")
+library("ggplot2")
+library("tidyverse")
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
@@ -13,9 +20,6 @@ Because of the Covid pandemic there has been a difficult time for some groups of
 
 ```{r fetchData, echo=FALSE}
 url <- "https://w2.brreg.no/kunngjoring/kombisok.jsp?id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0"
-
-library('xml2')
-library('rvest')
 
 scrape_search <- function(url, from_date, to_date) {
   data <- data.frame(county=rep(NA, 5000), company=rep(NA, 5000), orgNumber=rep(NA, 5000), date=rep(NA, 5000), type=rep(NA, 5000))
@@ -56,7 +60,6 @@ scrape_search <- function(url, from_date, to_date) {
 
 result <- data.frame()
 # For each month search given the 5000 results limit until today
-library(lubridate)
 from_date <- ymd("2019-01-01")
 now_date <- today()
 while (from_date <= now_date){
@@ -66,8 +69,6 @@ while (from_date <= now_date){
 }
 
 # Cleanup data
-library("dplyr")
-
 # Fix date type
 result <- result %>% mutate(date = as.Date(date, format="%d.%m.%Y")) %>%
   # Filter out data from outside the country
@@ -85,10 +86,6 @@ covidYear <- preAggregatedData %>% filter(year == "2020")
 ## 2019 vs 2020 Bankruptcies Per County
 
 ```{r plots, echo=FALSE}
-require(data.table)
-require(ggplot2)
-require(tidyverse)
-
 fill_empty_months <- function(df, months) {
   # df has all 12 months good!
   if (nrow(df) == months){
