@@ -22,6 +22,7 @@ Because of the Covid pandemic there has been a difficult time for some groups of
 url <- "https://w2.brreg.no/kunngjoring/kombisok.jsp?id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0"
 
 scrape_search <- function(url, from_date, to_date) {
+  # Initialize a large dataframe to avoid using rbind per datarow
   data <- data.frame(county=rep(NA, 5000), company=rep(NA, 5000), orgNumber=rep(NA, 5000), date=rep(NA, 5000), type=rep(NA, 5000))
   found <- 0
   
@@ -43,6 +44,7 @@ scrape_search <- function(url, from_date, to_date) {
       # Brokerage
       orgNumber <- trimws(gsub("\n", "", tds[4] %>% html_text()))
       # Only record companies which will have 4th td string length of atleast 9 chars:
+      # As those with less are people
       if (nchar(orgNumber) == 11){
         found <- found + 1
         data$county[found] <- county
@@ -63,8 +65,10 @@ result <- data.frame()
 from_date <- ymd("2019-01-01")
 now_date <- today()
 while (from_date <= now_date){
+  # Include until the last day in the month
   to_date <- from_date %m+% months(1) %m+% days(-1)
   result <- rbind(result, scrape_search(url, from_date %>% format("%d.%m.%Y"), to_date %>% format("%d.%m.%Y")))
+  # Move to next month
   from_date <- from_date %m+% months(1)
 }
 
@@ -79,8 +83,6 @@ preAggregatedData <- result %>% mutate(year=format(date, "%Y")) %>% mutate(month
 
 preCovidYear <- preAggregatedData %>% filter(year == "2019")
 covidYear <- preAggregatedData %>% filter(year == "2020")
-
-
 ```
 
 ## 2019 vs 2020 Bankruptcies Per County
@@ -112,13 +114,14 @@ fill_empty_months <- function(df, months) {
 counties <- unique(result$county)
 thisMonth = as.numeric(format(now_date, "%m"))
 for(i in 1:length(counties)){
+  # Filter out data for a single county
   countyN <- counties[i]
   countyPre <- preCovidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
   countyCovidYear <- covidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
-  
+  # Fill in empty month rows  
   countyPre <- fill_empty_months(countyPre, 12)
   countyCovidYear <- fill_empty_months(countyCovidYear, thisMonth)
-
+  # Plot both for 2019 and 2020
   plot <- ggplot() +
   geom_line(data=countyPre, aes(x=month, y=count, group=2019, col="2019")) +
   geom_line(data=countyCovidYear, aes(x=month, y=count, group=2020, col="2020")) +
@@ -128,6 +131,6 @@ for(i in 1:length(counties)){
 }
 ```
 
-Based on the results no clear conclusion can be taken as there are no significant change. However looking at these numbers alone is not enough to give a final conclusion. This is because some company types are more affected than others such as the musical industry. 
+Based on the results when comparing data from 2019-01-01 to `r format(now_date, "%Y-%m-%d")` no clear conclusion can be taken as there are no significant change. However looking at these numbers alone is not enough to give a final conclusion. This is because some company types are more affected than others such as the musical industry. 
 
-It would thus be neccecary to include other data to be able to take a better conclusion.
+It would thus be neccessary to include other data to be able to take a better conclusion.
