@@ -63,11 +63,13 @@ scrape_search <- function(url, from_date, to_date) {
 result <- data.frame()
 # For each month search given the 5000 results limit until today
 from_date <- ymd("2019-01-01")
-now_date <- today()
-while (from_date <= now_date){
+until_date <- ymd("2020-09-30")
+while (from_date <= until_date){
   # Include until the last day in the month
   to_date <- from_date %m+% months(1) %m+% days(-1)
-  result <- rbind(result, scrape_search(url, from_date %>% format("%d.%m.%Y"), to_date %>% format("%d.%m.%Y")))
+  if (to_date <= until_date){
+    result <- rbind(result, scrape_search(url, from_date %>% format("%d.%m.%Y"), to_date %>% format("%d.%m.%Y")))
+  }
   # Move to next month
   from_date <- from_date %m+% months(1)
 }
@@ -112,7 +114,7 @@ fill_empty_months <- function(df, months) {
 
 # Make a plot for each county
 counties <- unique(result$county)
-thisMonth = as.numeric(format(now_date, "%m"))
+finalMonth = as.numeric(format(until_date, "%m"))
 for(i in 1:length(counties)){
   # Filter out data for a single county
   countyN <- counties[i]
@@ -120,7 +122,7 @@ for(i in 1:length(counties)){
   countyCovidYear <- covidYear %>% filter(county==countyN) %>% count(month) %>% rename(count=n)
   # Fill in empty month rows  
   countyPre <- fill_empty_months(countyPre, 12)
-  countyCovidYear <- fill_empty_months(countyCovidYear, thisMonth)
+  countyCovidYear <- fill_empty_months(countyCovidYear, finalMonth)
   # Plot both for 2019 and 2020
   plot <- ggplot() +
   geom_line(data=countyPre, aes(x=month, y=count, group=2019, col="2019")) +
@@ -131,6 +133,6 @@ for(i in 1:length(counties)){
 }
 ```
 
-Based on the results when comparing data from 2019-01-01 to `r format(now_date, "%Y-%m-%d")` no clear conclusion can be taken as there are no significant change. However looking at these numbers alone is not enough to give a final conclusion. This is because some company types are more affected than others such as the musical industry. 
+Based on the results when comparing data from 2019-01-01 to `r format(until_date, "%Y-%m-%d")` no clear conclusion can be taken as there are no clear trend. However looking at these numbers alone is not enough to give a final conclusion. This is because some company types are more affected than others such as the musical industry. 
 
-It would thus be neccessary to include other data to be able to take a better conclusion.
+It would thus be necessary to include other data to be able to take a better conclusion.
