@@ -1,0 +1,73 @@
+---
+title: "BirthDataUS"
+author: "Jorgen Reinnes"
+date: "10/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analysis of birth data from the us 2017 to 2019
+
+```{r loadData}
+
+
+library("tidyverse")
+
+readBirthData <- function(file, col_positions) {
+  col_types <- cols(
+    birthYear = col_number(),
+    birthMonth = col_number(),
+    birthDayOfWeek = col_number(),
+    gender = col_character(),
+    weight = col_number()
+  )# Inf
+  birthData <- read_fwf(
+    file,
+    col_positions,
+    col_types,
+    trim_ws = TRUE,
+    skip = 0,
+    n_max = 1000,
+    guess_max = min(n_max, 1000),
+    progress = show_progress(),
+    skip_empty_rows = TRUE
+  )
+}
+
+# All data use the same positional data for columns
+# 475 = Gender
+# 13-14 = DOB_MM  (MM)
+# 504-507 = birth weight in grams EXCLUDE where 9999 as that is unstated weight!
+# 23 = birth day of week    (d)
+col_positions <- fwf_positions(c(9, 13, 23, 475, 504), c(12, 14, 23, 475, 507), c("birthYear", "birthMonth", "birthDayOfWeek", "gender", "weight"))
+result <- data.frame()
+# 2018
+result <- rbind(result, readBirthData("data/Nat2017PublicUS.c20180516.r20180808.txt", col_positions))
+# 2018
+result <- rbind(result, readBirthData("data/Nat2018PublicUS.c20190509.r20190717.txt", col_positions))
+# 2019
+result <- rbind(result, readBirthData("data/Nat2019PublicUS.c20200506.r20200915.txt", col_positions))
+
+
+
+```
+
+### Proportion of boys to girls
+
+
+
+
+
+
+
+
+
+### The average birth weight in grams by gender?
+
+
+
+
+### The proportion of boys to girls by day of birth.
