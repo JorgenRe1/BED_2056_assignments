@@ -3,25 +3,27 @@ title: "BirthDataUS"
 author: "Jorgen Reinnes"
 date: "10/25/2020"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
-```{r setup, include=FALSE}
-library("tidyverse")
+```{r setup, include=TRUE}
 library("plyr")
-knitr::opts_chunk$set(echo = TRUE)
+library("magrittr")
+library("tidyverse")
+library("ggplot2")
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ## Analysis of birth data from the us 2017 to 2019
 
-```{r loadData, echo=FALSE}
+```{r loadData}
 readBirthData <- function(file, col_positions) {
   col_types <- cols(
     birthYear = col_number(),
     birthMonth = col_number(),
     birthDayOfWeek = col_number(),
-    gender = col_character(),
+    GenderTest = col_character(),
     weight = col_number()
   )# Inf
   birthData <- read_fwf(
@@ -31,7 +33,7 @@ readBirthData <- function(file, col_positions) {
     trim_ws = TRUE,
     skip = 0,
     n_max = 1000,
-    guess_max = min(n_max, 1000),
+    # guess_max = min(n_max, 1000),
     progress = show_progress(),
     skip_empty_rows = TRUE
   )
@@ -42,7 +44,7 @@ readBirthData <- function(file, col_positions) {
 # 13-14 = DOB_MM  (MM)
 # 504-507 = birth weight in grams EXCLUDE where 9999 as that is unstated weight!
 # 23 = birth day of week    (d)
-col_positions <- fwf_positions(c(9, 13, 23, 475, 504), c(12, 14, 23, 475, 507), c("birthYear", "birthMonth", "birthDayOfWeek", "gender", "weight"))
+col_positions <- fwf_positions(c(9, 13, 23, 475, 504), c(12, 14, 23, 475, 507), c("birthYear", "birthMonth", "birthDayOfWeek", "GenderTest", "weight"))
 result <- data.frame()
 # 2018
 result <- rbind(result, readBirthData("data/Nat2017PublicUS.c20180516.r20180808.txt", col_positions))
@@ -50,21 +52,20 @@ result <- rbind(result, readBirthData("data/Nat2017PublicUS.c20180516.r20180808.
 result <- rbind(result, readBirthData("data/Nat2018PublicUS.c20190509.r20190717.txt", col_positions))
 # 2019
 result <- rbind(result, readBirthData("data/Nat2019PublicUS.c20200506.r20200915.txt", col_positions))
-
 ```
 
 ### Proportion of boys to girls
 
-```{r proportionOfBoysToGirls, echo=FALSE}
+```{r proportionOfBoysToGirls}
 
 # Aggregate number of boys and girls each month
 
-# Callculate male/female proportion grouped by birthYear and month
-proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(gender) %>%
+# Calculate male/female proportion grouped by birthYear and month
+proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(GenderTest) %>%
   # Calculate proportion ex maleCount / ((male + female count) - male count)
   mutate(proportion = n / (sum(n)-n)) %>%
   # Filter out all female
-  filter(gender == "M") %>%
+  filter(GenderTest == "M") %>%
   # Re group by year
   ungroup() %>%
   group_by(birthYear)
@@ -75,6 +76,7 @@ proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(gender) %
   ggtitle("Proportion of boys/girls births") +
   ylab("Proportion") + xlab("Month") +
   labs(color='Year') 
+  
 ```
 
 Based on the given data 
@@ -85,7 +87,7 @@ Based on the given data
 
 ### The average birth weight in grams by gender?
 
-```{r averageBirthWeightVersusGender, echo=FALSE}
+```{r averageBirthWeightVersusGender}
 
 # Aggregate number of boys and girls each month
 
@@ -109,17 +111,17 @@ weightData <- result %>% group_by(birthYear, birthMonth) %>%
 ### The proportion of boys to girls by day of birth.
 
 
-```{r proportionByDayOfWeek, echo=FALSE}
+```{r proportionByDayOfWeek}
 
 # Aggregate number of boys and girls each month
 
 # Callculate male/female proportion
-proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% count(gender) %>%
+proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% count(GenderTest) %>%
   # Calculate proportion ex maleCount / ((male + female count) - male count)
   mutate(proportion = n / (sum(n)-n)) %>%
   mutate(color = "#EFC000FF") %>%
   # Filter out all female
-  filter(gender == "M") %>%
+  filter(GenderTest == "M") %>%
   # Re group by year
   ungroup() %>%
   group_by(birthYear)
@@ -130,7 +132,6 @@ proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% coun
     stat = "identity", position = position_dodge(0.8),
     width = 0.7
     )
-
 ```
 
 
