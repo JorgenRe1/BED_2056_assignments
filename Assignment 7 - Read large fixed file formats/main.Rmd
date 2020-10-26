@@ -2,20 +2,20 @@
 title: "BirthDataUS"
 author: "Jorgen Reinnes"
 date: "10/25/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
+library("tidyverse")
+library("plyr")
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Analysis of birth data from the us 2017 to 2019
 
-```{r loadData}
-
-
-library("tidyverse")
-
+```{r loadData, echo=FALSE}
 readBirthData <- function(file, col_positions) {
   col_types <- cols(
     birthYear = col_number(),
@@ -51,15 +51,33 @@ result <- rbind(result, readBirthData("data/Nat2018PublicUS.c20190509.r20190717.
 # 2019
 result <- rbind(result, readBirthData("data/Nat2019PublicUS.c20200506.r20200915.txt", col_positions))
 
-
-
 ```
 
 ### Proportion of boys to girls
 
+```{r proportionOfBoysToGirls, echo=FALSE}
 
+# Aggregate number of boys and girls each month
 
+# Callculate male/female proportion grouped by birthYear and month
+proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(gender) %>%
+  # Calculate proportion ex maleCount / ((male + female count) - male count)
+  mutate(proportion = n / (sum(n)-n)) %>%
+  # Filter out all female
+  filter(gender == "M") %>%
+  # Re group by year
+  ungroup() %>%
+  group_by(birthYear)
 
+# Plot 
+  ggplot() +
+  geom_line(data=proportionData, aes(x=birthMonth, y=proportion, group=birthYear, col=as.character(birthYear))) +
+  ggtitle("Proportion of boys/girls births") +
+  ylab("Proportion") + xlab("Month") +
+  labs(color='Year') 
+```
+
+Based on the given data 
 
 
 
@@ -67,7 +85,68 @@ result <- rbind(result, readBirthData("data/Nat2019PublicUS.c20200506.r20200915.
 
 ### The average birth weight in grams by gender?
 
+```{r averageBirthWeightVersusGender, echo=FALSE}
 
+# Aggregate number of boys and girls each month
 
+# Callculate male/female proportion
+weightData <- result %>% group_by(birthYear, birthMonth) %>%
+  # Calculate proportion ex maleCount / ((male + female count) - male count)
+  mutate(avgWeight = mean(weight)) %>%
+  # Re group by year
+  ungroup() %>%
+  group_by(birthYear)
+
+# Plot 
+  ggplot() +
+  geom_line(data=weightData, aes(x=birthMonth, y=avgWeight, group=birthYear, col=as.character(birthYear))) +
+  ggtitle("Proportion of boys/girls births") +
+  ylab("Proportion") + xlab("Month") +
+  labs(color='Year')
+
+```
 
 ### The proportion of boys to girls by day of birth.
+
+
+```{r proportionByDayOfWeek, echo=FALSE}
+
+# Aggregate number of boys and girls each month
+
+# Callculate male/female proportion
+proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% count(gender) %>%
+  # Calculate proportion ex maleCount / ((male + female count) - male count)
+  mutate(proportion = n / (sum(n)-n)) %>%
+  mutate(color = "#EFC000FF") %>%
+  # Filter out all female
+  filter(gender == "M") %>%
+  # Re group by year
+  ungroup() %>%
+  group_by(birthYear)
+  
+  ggplot(proportionDataWeekday, aes(x = birthDayOfWeek, y = proportion)) +
+  geom_bar(
+    aes(group=as.character(birthYear), fill=as.character(birthYear)),
+    stat = "identity", position = position_dodge(0.8),
+    width = 0.7
+    )
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
