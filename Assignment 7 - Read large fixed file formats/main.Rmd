@@ -7,7 +7,7 @@ output:
   pdf_document: default
 ---
 
-```{r setup, include=TRUE}
+```{r setup, include=FALSE}
 library("plyr")
 library("magrittr")
 library("tidyverse")
@@ -23,7 +23,7 @@ readBirthData <- function(file, col_positions) {
     birthYear = col_number(),
     birthMonth = col_number(),
     birthDayOfWeek = col_number(),
-    GenderTest = col_character(),
+    sex = col_character(),
     weight = col_number()
   )# Inf
   birthData <- read_fwf(
@@ -32,7 +32,7 @@ readBirthData <- function(file, col_positions) {
     col_types,
     trim_ws = TRUE,
     skip = 0,
-    n_max = 1000,
+    n_max = 10000,
     # guess_max = min(n_max, 1000),
     progress = show_progress(),
     skip_empty_rows = TRUE
@@ -44,7 +44,7 @@ readBirthData <- function(file, col_positions) {
 # 13-14 = DOB_MM  (MM)
 # 504-507 = birth weight in grams EXCLUDE where 9999 as that is unstated weight!
 # 23 = birth day of week    (d)
-col_positions <- fwf_positions(c(9, 13, 23, 475, 504), c(12, 14, 23, 475, 507), c("birthYear", "birthMonth", "birthDayOfWeek", "GenderTest", "weight"))
+col_positions <- fwf_positions(c(9, 13, 23, 475, 504), c(12, 14, 23, 475, 507), c("birthYear", "birthMonth", "birthDayOfWeek", "sex", "weight"))
 result <- data.frame()
 # 2018
 result <- rbind(result, readBirthData("data/Nat2017PublicUS.c20180516.r20180808.txt", col_positions))
@@ -61,11 +61,11 @@ result <- rbind(result, readBirthData("data/Nat2019PublicUS.c20200506.r20200915.
 # Aggregate number of boys and girls each month
 
 # Calculate male/female proportion grouped by birthYear and month
-proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(GenderTest) %>%
+proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(sex) %>%
   # Calculate proportion ex maleCount / ((male + female count) - male count)
   mutate(proportion = n / (sum(n)-n)) %>%
   # Filter out all female
-  filter(GenderTest == "M") %>%
+  filter(sex == "M") %>%
   # Re group by year
   ungroup() %>%
   group_by(birthYear)
@@ -75,11 +75,14 @@ proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(GenderTes
   geom_line(data=proportionData, aes(x=birthMonth, y=proportion, group=birthYear, col=as.character(birthYear))) +
   ggtitle("Proportion of boys/girls births") +
   ylab("Proportion") + xlab("Month") +
-  labs(color='Year') 
+  labs(color='Year') +
+  scale_x_continuous(expand = c(0, 0))
+  
+  moreBornBoys <- floor((mean(proportionData$proportion)-1)*100)
   
 ```
 
-Based on the given data 
+Based on the given data there were born r moreBornBoys`% more boys than girls from 2017 to 2019. The numbers were stable and did not fluctuate significantly away from that number.
 
 
 
@@ -88,40 +91,44 @@ Based on the given data
 ### The average birth weight in grams by gender?
 
 ```{r averageBirthWeightVersusGender}
-
-# Aggregate number of boys and girls each month
-
-# Callculate male/female proportion
-weightData <- result %>% group_by(birthYear, birthMonth) %>%
+# Calculate male/female avg birth weight across months
+weightData <- result %>% group_by(birthYear, birthMonth, sex) %>%
   # Calculate proportion ex maleCount / ((male + female count) - male count)
   mutate(avgWeight = mean(weight)) %>%
+  distinct(birthYear, birthMonth, sex, .keep_all = TRUE) %>%
+  mutate(yearAndGender = paste(birthYear, sex, sep=": ")) %>%
   # Re group by year
   ungroup() %>%
   group_by(birthYear)
 
 # Plot 
   ggplot() +
-  geom_line(data=weightData, aes(x=birthMonth, y=avgWeight, group=birthYear, col=as.character(birthYear))) +
-  ggtitle("Proportion of boys/girls births") +
-  ylab("Proportion") + xlab("Month") +
-  labs(color='Year')
+  geom_line(data=weightData, aes(x=birthMonth, y=avgWeight, linetype=sex, group=yearAndGender, col=as.character(birthYear))) +
+  ggtitle("Average Birth Weight by Gender") +
+  ylab("Weight (g)") + xlab("Month") +
+  labs(color='Year', linetype="Sex") + 
+    scale_x_continuous(expand = c(0, 0))
 
 ```
+
+On average males weigh more than girls and the trend has been stable across the years. However of note weight is marginally higher in the summer than it is during the winter.
+
+
 
 ### The proportion of boys to girls by day of birth.
 
 
 ```{r proportionByDayOfWeek}
-
-# Aggregate number of boys and girls each month
-
-# Callculate male/female proportion
-proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% count(GenderTest) %>%
+# Calculate male/female proportion by weekday per year
+proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% count(sex) %>%
   # Calculate proportion ex maleCount / ((male + female count) - male count)
   mutate(proportion = n / (sum(n)-n)) %>%
   mutate(color = "#EFC000FF") %>%
+  # Fix that americans use sunday as 0th day of the week
+  mutate(birthDayOfWeek = case_when(birthDayOfWeek == 0 ~ 7, 
+                             TRUE ~ birthDayOfWeek)) %>%
   # Filter out all female
-  filter(GenderTest == "M") %>%
+  filter(sex == "M") %>%
   # Re group by year
   ungroup() %>%
   group_by(birthYear)
@@ -131,11 +138,13 @@ proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% coun
     aes(group=as.character(birthYear), fill=as.character(birthYear)),
     stat = "identity", position = position_dodge(0.8),
     width = 0.7
-    )
+    ) +
+    ylab("Proportion") + xlab("Day of the week with 1 == monday and sunday == 7") +
+    labs(fill='Year')
 ```
 
 
-
+The proportion between boys and girls born does not seem to depend a noticeable amount each yea on which weekday they are born onr. 
 
 
 
