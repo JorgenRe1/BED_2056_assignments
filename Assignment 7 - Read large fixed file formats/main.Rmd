@@ -25,14 +25,14 @@ readBirthData <- function(file, col_positions) {
     birthDayOfWeek = col_number(),
     sex = col_character(),
     weight = col_number()
-  )# Inf
+  )
   birthData <- read_fwf(
     file,
     col_positions,
     col_types,
     trim_ws = TRUE,
     skip = 0,
-    n_max = 10000,
+    n_max = Inf,
     # guess_max = min(n_max, 1000),
     progress = show_progress(),
     skip_empty_rows = TRUE
@@ -82,7 +82,7 @@ proportionData <- result %>% group_by(birthYear, birthMonth) %>% count(sex) %>%
   
 ```
 
-Based on the given data there were born r moreBornBoys`% more boys than girls from 2017 to 2019. The numbers were stable and did not fluctuate significantly away from that number.
+Based on the given data there were born r moreBornBoys`% more boys than girls from 2017 to 2019. The change in proportion is going downwards towards December.
 
 
 
@@ -140,11 +140,12 @@ proportionDataWeekday <- result %>% group_by(birthDayOfWeek, birthYear) %>% coun
     width = 0.7
     ) +
     ylab("Proportion") + xlab("Day of the week with 1 == monday and sunday == 7") +
-    labs(fill='Year')
+    labs(fill='Year')+ 
+    scale_y_continuous(expand = c(0, 0))
 ```
 
 
-The proportion between boys and girls born does not seem to depend a noticeable amount each yea on which weekday they are born onr. 
+The proportion between boys and girls born does not seem to depend a noticeable amount each yea on which weekday they are born on. 
 
 
 
